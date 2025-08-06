@@ -3,34 +3,21 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\File;
+use Symfony\Component\Process\Process;
 
 class InstallProject extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'install:project {name}'; // <-- اسم الأمر وحجته
-
-    /**
-
-     * The console command description.
-    *
-    * @var string
-    */
+    protected $signature = 'install:project {name}';
     protected $description = 'Install and setup a new project with the given name';
 
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
         $name = $this->argument('name');
 
         $this->info("Installing project: $name");
 
-        // 1. Copy .env.example to .env
+        // Step 1: Copy .env file
         if (!File::exists(base_path('.env'))) {
             File::copy(base_path('.env.example'), base_path('.env'));
             $this->info('.env file copied.');
@@ -38,30 +25,47 @@ class InstallProject extends Command
             $this->warn('.env file already exists. Skipping copy.');
         }
 
-        // 2. Composer install
+        // Step 2: Composer install
         $this->info('Running composer install...');
         $this->runProcess(['composer', 'install']);
 
-        // 3. Generate key
+        // Step 3: Generate key
         $this->info('Generating application key...');
         $this->call('key:generate');
 
-        // 4. Migrate
+        // Step 4: Migrate
         $this->info('Running migrations...');
         $this->call('migrate');
 
-        // 5. Seed
+        // Step 5: Seed
         $this->info('Running seeders...');
         $this->call('db:seed');
 
-        // 6. NPM install
+        // Step 6: npm install
         $this->info('Installing npm packages...');
         $this->runProcess(['npm', 'install']);
 
-        // 7. NPM run build
-        $this->info('Building frontend with Vite...');
+        // Step 7: npm run dev (for development environment)
+        $this->info('Running Vite dev server...');
         $this->runProcess(['npm', 'run', 'build']);
 
-        $this->info("Project $name has been installed successfully!");
+        // Step 8: Start the queue worker
+        $this->info('Starting queue:work...');
+        $this->runProcess(['php', 'artisan', 'queue:work']);
+
+        $this->info("✅ Project $name has been installed and is now running.");
+    }
+
+    protected function runProcess(array $command)
+    {
+        $process = new Process($command);
+        $process->setTimeout(null); // No timeout
+        $process->run(function ($type, $buffer) {
+            echo $buffer;
+        });
+
+        if (!$process->isSuccessful()) {
+            $this->error("Command failed: " . implode(' ', $command));
+        }
     }
 }

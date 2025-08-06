@@ -21,9 +21,9 @@
         <li class="nav-item nav-notif position-relative">
             <a class="nav-link text-muted my-2 position-relative" href="./#" data-toggle="modal" data-target=".modal-notif">
               <span class="fe fe-bell fe-16"></span>
-              <span class="badge badge-pill badge-success position-absolute top-0 start-100 translate-middle" style="font-size: 12px; padding: 4px 7px; border-radius: 50%;top:0px">
-                {{count(Auth::guard('admin')->user()->unreadnotifications)}}
-              </span>
+              <span class="badge badge-pill badge-success position-absolute top-0 start-100 translate-middle dot text-succes" style="font-size: 12px; padding: 4px 7px; border-radius: 50%;top:0px;color:black">
+                  {{count(Auth::guard('admin')->user()->unreadnotifications)}}
+            </span>
             </a>
           </li>
 

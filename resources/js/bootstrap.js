@@ -15,10 +15,16 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * allows your team to easily build robust real-time web applications.
  */
 
-// import Echo from 'laravel-echo';
+import Echo from 'laravel-echo';
 
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
+// Enable pusher logging - don't include this in production
+    Pusher.logToConsole = true;
+
+    var pusher = new Pusher('400e613895e0965e5d41', {
+      cluster: 'eu'
+    });
 
 window.Echo = new Echo({
     broadcaster: 'pusher',
@@ -34,33 +40,33 @@ window.Echo = new Echo({
 window.Echo.channel('channel')
     .listen('NewPostEvent', (event) => {
         console.log(event.message);
-        let unreadCount = parseInt(document.querySelector('.dot.text-success').textContent);
-    document.querySelector('.dot.text-success').textContent = unreadCount + 1;
 
-    // Create the new notification item dynamically
-     // Assuming the event sends notification data
-    // console.log(notification);
+        // تحديث العداد
+        let dotElement = document.querySelector('.dot.text-succes');
+        if (dotElement) {
+            let unreadCount = parseInt(dotElement.textContent) || 0;
+            dotElement.textContent = unreadCount + 1;
+        }
 
-    var notificationHtml = `
-        <div class="list-group list-group-flush my-n3">
+        // إنشاء إشعار جديد
+        var notificationHtml = `
             <div class="list-group-item bg-light">
                 <div class="row align-items-center">
                     <div class="col-auto">
                         <span class="fe fe-box fe-24"></span>
                     </div>
                     <div class="col">
-                        <small><strong>New user Registered</strong></small>
-                        <div class="my-0 text-muted small">${data.message}</div>
+                        <small><strong>New Post Added</strong></small>
+                        <div class="my-0 text-muted small">${event.message}</div>
                         <small class="badge badge-pill badge-light text-muted">Just now</small>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
-    // Append the new notification to the notification list
-    var notificationsList = document.querySelector('.list-group');
-    notificationsList.insertAdjacentHTML('afterbegin', notificationHtml);
-
-
+        let notificationsList = document.querySelector('.list-group');
+        if (notificationsList) {
+            notificationsList.insertAdjacentHTML('afterbegin', notificationHtml);
+        }
     });
+

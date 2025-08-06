@@ -53,14 +53,9 @@
     });
 </script> --}}
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-  <script>
+  {{-- <script>
 
-    // Enable pusher logging - don't include this in production
-    Pusher.logToConsole = true;
 
-    var pusher = new Pusher('400e613895e0965e5d41', {
-      cluster: 'eu'
-    });
 
     var channel = pusher.subscribe('channel');
     channel.bind('App\\Events\\NewPostEvent', function(data) {
@@ -94,7 +89,7 @@
         notificationsList.insertAdjacentHTML('afterbegin', notificationHtml);
 
     });
-  </script>
+  </script> --}}
 
 @yield('js')
 </body>
