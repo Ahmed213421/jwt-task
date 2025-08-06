@@ -13,3 +13,4 @@ install the project seeders and migrations and do npm run build and copy .env.ex
 email: spider@gmail.com
 password:123
 
+# put pusher account information to work (real time notification when add a post)
