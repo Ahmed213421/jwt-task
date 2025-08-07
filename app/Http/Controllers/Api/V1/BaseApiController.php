@@ -50,15 +50,6 @@ class BaseApiController extends Controller
     }
 
 
-    /**
-     * respondWithModel() used to return result with one model relation
-     */
-    protected function respondWithModel($model, ?int $statusCode = null, array $headers = []): mixed
-    {
-        $statusCode = $statusCode ?? Response::HTTP_OK;
-        $resource = new $this->modelResource($model->load($this->relations)); // ???
-
-        return $this->setStatusCode($statusCode)->respond($resource, $headers);
-    }
+    
 
 }
