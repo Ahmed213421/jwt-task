@@ -33,16 +33,21 @@ class AuthController extends Controller
             'mobile' => $request->mobile ?? null,
         ]);
 
-        $token = JWTAuth::fromUser($user);
+        $accessToken = JWTAuth::fromUser($user);
+
+        $refreshToken = JWTAuth::claims(['type' => 'refresh'])
+        ->fromUser($user, JWTAuth::factory()->setTTL(60 * 24 * 7)->getTTL());
 
         return response()->json([
-            'message' => 'User registered successfully',
+            'message' => 'Registered successfully',
             'user' => $user,
-            'token' => $token,
-        ], 201);
+            'access_token' => $accessToken,
+        ])->cookie(
+            'refresh_token', $refreshToken, 60 * 24 * 7, '/', null, true, true, false, 'Strict'
+        );
     }
 
-    // Login and generate a JWT
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -55,13 +60,21 @@ class AuthController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        $admin = Auth::guard('admin-api')->user();
+
+
+        $refreshToken = JWTAuth::claims(['type' => 'refresh'])
+        ->fromUser($admin, JWTAuth::factory()->setTTL(60 * 24 * 7)->getTTL());
+
         return response()->json([
             'message' => 'Login successful',
-            'token' => $token,
+            'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => Auth::guard('admin-api')->factory()->getTTL() * 60,
-            'admin' => Auth::guard('admin-api')->user(),
-        ]);
+            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'admin' => $admin,
+        ])->cookie(
+            'refresh_token', $refreshToken, 60 * 24 * 7, '/', null, true, true, false, 'Strict'
+        );
     }
 
     // Get authenticated user details
@@ -73,8 +86,30 @@ class AuthController extends Controller
     // Logout the user
     public function logout()
     {
-        auth('admin')->logout();
+        auth('admin-api')->logout();
 
         return response()->json(['message' => 'Successfully logged out']);
+    }
+
+// REFRESH ACCESS TOKEN
+    public function refresh(Request $request)
+    {
+        try {
+            $refreshToken = $request->cookie('refresh_token');
+
+            if (!$refreshToken) {
+                return response()->json(['error' => 'Missing refresh token'], 401);
+            }
+
+            $newAccessToken = JWTAuth::setToken($refreshToken)->refresh();
+
+            return response()->json([
+                'access_token' => $newAccessToken,
+                'token_type' => 'bearer',
+                'expires_in' => Auth::guard('admin-api')->factory()->getTTL() * 60,
+            ]);
+        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+            return response()->json(['error' => 'Invalid or expired refresh token'], 401);
+        }
     }
 }

@@ -24,6 +24,7 @@ Route::apiResource('posts',PostController::class);
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
+Route::post('/refresh', [AuthController::class, 'refresh']);
 
 Route::middleware('auth:admin-api')->group(function () {
     Route::get('user', [AuthController::class, 'user']);
