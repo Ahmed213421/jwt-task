@@ -27,8 +27,6 @@ Route::apiResource('posts', PostController::class);
 // Public service routes
 Route::get('services', [ServiceController::class, 'index']);
 Route::get('services/{service}', [ServiceController::class, 'show']);
-Route::get('services/search', [ServiceController::class, 'search']);
-Route::get('services/type/{type}', [ServiceController::class, 'byType']);
 
 // Admin authentication routes
 Route::post('admin/register', [AuthController::class, 'register']);
@@ -54,13 +52,14 @@ Route::middleware('auth:admin-api')->group(function () {
 Route::middleware('auth:api')->group(function () {
     Route::get('user/profile', [UserAuthController::class, 'user']);
     Route::post('user/logout', [UserAuthController::class, 'logout']);
-    
+
     // User booking routes
     Route::get('user/bookings', [BookingController::class, 'index']);
     Route::get('user/bookings/{booking}', [BookingController::class, 'show']);
     Route::post('user/bookings', [BookingController::class, 'store']);
     Route::put('user/bookings/{booking}', [BookingController::class, 'update']);
     Route::post('user/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+    Route::get('user/bookings-stats', [BookingController::class, 'userStats']);
 });
 
 Route::middleware('auth:specialist-api')->group(function () {

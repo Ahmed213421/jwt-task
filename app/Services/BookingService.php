@@ -7,7 +7,6 @@ use App\Models\Service;
 use App\Models\Specialist;
 use App\Repositories\Contracts\BookingContract;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 
 class BookingService
@@ -19,36 +18,16 @@ class BookingService
         $this->bookingRepository = $bookingRepository;
     }
 
-    public function createBooking(array $data, int $userId): JsonResponse
+    public function createBooking(array $data, int $userId): array
     {
         $validation = $this->validateBookingData($data);
         if (!$validation['valid']) {
-            return response()->json([
-                'message' => 'Validation failed',
+            return [
+                'error' => 'Validation failed',
                 'errors' => $validation['errors']
-            ], 422);
+            ];
         }
 
-        if (!$this->checkSpecialistAvailability($data['specialist_id'], $data['start_time'], $data['end_time'])) {
-            $conflictingBookings = $this->bookingRepository->getConflictingBookings(
-                $data['specialist_id'],
-                $data['start_time'],
-                $data['end_time']
-            );
-
-            return response()->json([
-                'message' => 'The specialist is not available at the requested time',
-                'conflicting_bookings' => $conflictingBookings->map(function ($booking) {
-                    return [
-                        'id' => $booking->id,
-                        'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
-                        'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
-                        'service' => $booking->service->name,
-                        'user' => $booking->user->name
-                    ];
-                })
-            ], 422);
-        }
 
         $booking = $this->bookingRepository->create([
             'user_id' => $userId,
@@ -61,145 +40,103 @@ class BookingService
 
         $booking->load(['specialist', 'service']);
 
-        return response()->json([
-            'message' => 'Booking created successfully',
-            'booking' => $booking
-        ], 201);
+        return $booking->toArray();
     }
 
-    public function updateBooking(int $bookingId, array $data, int $userId): JsonResponse
+    public function updateBooking(int $bookingId, array $data, int $userId): array
     {
         $booking = $this->bookingRepository->find($bookingId, ['user', 'specialist', 'service']);
 
         if (!$booking) {
-            return response()->json(['message' => 'Booking not found'], 404);
+            return ['error' => 'Booking not found'];
         }
 
         if ($booking->user_id !== $userId && $booking->specialist_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized access to booking'], 403);
+            return ['error' => 'Unauthorized access to booking'];
         }
 
         if ($booking->start_time < now()) {
-            return response()->json(['message' => 'Cannot update past bookings'], 422);
+            return ['error' => 'Cannot update past bookings'];
         }
 
         if ($booking->status === 'cancelled') {
-            return response()->json(['message' => 'Cannot update cancelled bookings'], 422);
+            return ['error' => 'Cannot update cancelled bookings'];
         }
 
         $validation = $this->validateBookingData($data);
         if (!$validation['valid']) {
-            return response()->json([
-                'message' => 'Validation failed',
+            return [
+                'error' => 'Validation failed',
                 'errors' => $validation['errors']
-            ], 422);
+            ];
         }
 
-        if (!$this->checkSpecialistAvailability($data['specialist_id'], $data['start_time'], $data['end_time'], $bookingId)) {
-            $conflictingBookings = $this->bookingRepository->getConflictingBookings(
-                $data['specialist_id'],
-                $data['start_time'],
-                $data['end_time'],
-                $bookingId
-            );
 
-            return response()->json([
-                'message' => 'The specialist is not available at the requested time',
-                'conflicting_bookings' => $conflictingBookings->map(function ($booking) {
-                    return [
-                        'id' => $booking->id,
-                        'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
-                        'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
-                        'service' => $booking->service->name,
-                        'user' => $booking->user->name
-                    ];
-                })
-            ], 422);
-        }
 
         $this->bookingRepository->update($booking, $data);
         $booking->refresh();
         $booking->load(['user', 'specialist', 'service']);
 
-        return response()->json([
-            'message' => 'Booking updated successfully',
-            'booking' => $booking
-        ]);
+        return $booking->toArray();
     }
 
-    public function cancelBooking(int $bookingId, int $userId): JsonResponse
+    public function cancelBooking(int $bookingId, int $userId): array
     {
         $booking = $this->bookingRepository->find($bookingId, ['user', 'specialist', 'service']);
 
         if (!$booking) {
-            return response()->json(['message' => 'Booking not found'], 404);
+            return ['error' => 'Booking not found'];
         }
 
         if ($booking->user_id !== $userId && $booking->specialist_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized access to booking'], 403);
+            return ['error' => 'Unauthorized access to booking'];
         }
 
         if ($booking->status === 'cancelled') {
-            return response()->json(['message' => 'Booking is already cancelled'], 422);
+            return ['error' => 'Booking is already cancelled'];
         }
 
         if ($booking->start_time < now()) {
-            return response()->json(['message' => 'Cannot cancel past bookings'], 422);
+            return ['error' => 'Cannot cancel past bookings'];
         }
 
         $this->bookingRepository->cancelBooking($bookingId);
         $booking->refresh();
         $booking->load(['user', 'specialist', 'service']);
 
-        return response()->json([
-            'message' => 'Booking cancelled successfully',
-            'booking' => $booking
-        ]);
+        return $booking->toArray();
     }
 
-    public function getUserBookings(int $userId, int $perPage = 15): JsonResponse
+    public function getUserBookings(int $userId, int $perPage = 15): array
     {
-        $bookings = $this->bookingRepository->getUserBookings($userId, $perPage);
-
-        return response()->json([
-            'message' => 'Bookings retrieved successfully',
-            'bookings' => $bookings
-        ]);
+        return $this->bookingRepository->getUserBookings($userId, $perPage);
     }
 
-    public function getSpecialistBookings(int $specialistId, int $perPage = 15): JsonResponse
+    public function getSpecialistBookings(int $specialistId, int $perPage = 15): array
     {
-        $bookings = $this->bookingRepository->getSpecialistBookings($specialistId, $perPage);
-
-        return response()->json([
-            'message' => 'Specialist bookings retrieved successfully',
-            'bookings' => $bookings
-        ]);
+        return $this->bookingRepository->getSpecialistBookings($specialistId, $perPage);
     }
 
-    public function getBooking(int $bookingId, int $userId): JsonResponse
+    public function getBooking(int $bookingId, int $userId): array
     {
         $booking = $this->bookingRepository->find($bookingId, ['user', 'specialist', 'service']);
 
         if (!$booking) {
-            return response()->json(['message' => 'Booking not found'], 404);
+            return ['error' => 'Booking not found'];
         }
 
         if ($booking->user_id !== $userId && $booking->specialist_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized access to booking'], 403);
+            return ['error' => 'Unauthorized access to booking'];
         }
 
-        return response()->json([
-            'message' => 'Booking retrieved successfully',
-            'booking' => $booking
-        ]);
+        return $booking->toArray();
     }
 
-    public function getAvailableSlots(int $specialistId, string $date, int $serviceId): JsonResponse
+    public function getAvailableSlots(int $specialistId, string $date, int $serviceId): array
     {
         $specialist = Specialist::find($specialistId);
         if (!$specialist || !$specialist->is_active) {
-            return response()->json(['message' => 'Specialist not found or inactive'], 404);
+            return ['error' => 'Specialist not found or inactive'];
         }
 
         $service = Service::where('id', $serviceId)
@@ -207,38 +144,27 @@ class BookingService
             ->first();
 
         if (!$service) {
-            return response()->json(['message' => 'Service not found for this specialist'], 404);
+            return ['error' => 'Service not found for this specialist'];
         }
 
         $availableSlots = $this->bookingRepository->getAvailableTimeSlots($specialistId, $date);
 
-        return response()->json([
-            'message' => 'Available slots retrieved successfully',
+        return [
             'specialist' => $specialist->name,
-            'service' => $service->name,
+            'service' => $service->title,
             'date' => Carbon::parse($date)->format('Y-m-d'),
             'available_slots' => $availableSlots
-        ]);
+        ];
     }
 
-    public function getUserStats(int $userId): JsonResponse
+    public function getUserStats(int $userId): array
     {
-        $stats = $this->bookingRepository->getUserBookingStats($userId);
-
-        return response()->json([
-            'message' => 'Statistics retrieved successfully',
-            'stats' => $stats
-        ]);
+        return $this->bookingRepository->getUserBookingStats($userId);
     }
 
-    public function getSpecialistStats(int $specialistId): JsonResponse
+    public function getSpecialistStats(int $specialistId): array
     {
-        $stats = $this->bookingRepository->getSpecialistBookingStats($specialistId);
-
-        return response()->json([
-            'message' => 'Statistics retrieved successfully',
-            'stats' => $stats
-        ]);
+        return $this->bookingRepository->getSpecialistBookingStats($specialistId);
     }
 
     public function validateBookingData(array $data): array
@@ -257,7 +183,6 @@ class BookingService
             ];
         }
 
-        // Validate specialist exists and is active
         $specialist = Specialist::find($data['specialist_id']);
         if (!$specialist || !$specialist->is_active) {
             return [
@@ -266,7 +191,6 @@ class BookingService
             ];
         }
 
-        // Validate service exists and belongs to the specialist
         $service = Service::where('id', $data['service_id'])
             ->where('specialist_id', $data['specialist_id'])
             ->first();
@@ -282,7 +206,6 @@ class BookingService
         $endTime = Carbon::parse($data['end_time']);
         $now = Carbon::now();
 
-        // Enhanced time validation
         if ($startTime->lt($now)) {
             return [
                 'valid' => false,
@@ -290,7 +213,6 @@ class BookingService
             ];
         }
 
-        // Check if booking is too far in the future (max 6 months)
         if ($startTime->gt($now->copy()->addMonths(6))) {
             return [
                 'valid' => false,
@@ -300,7 +222,6 @@ class BookingService
 
         $duration = $endTime->diffInHours($startTime);
 
-        // Validate duration limits
         if ($duration > 8) {
             return [
                 'valid' => false,
@@ -315,7 +236,6 @@ class BookingService
             ];
         }
 
-        // Check if booking is during business hours (9 AM to 11 PM)
         $startHour = $startTime->hour;
         $endHour = $endTime->hour;
 
@@ -326,7 +246,6 @@ class BookingService
             ];
         }
 
-        // Check if booking is on a valid day (Monday to Sunday)
         $dayOfWeek = $startTime->dayOfWeek;
         if ($dayOfWeek < 1 || $dayOfWeek > 7) {
             return [

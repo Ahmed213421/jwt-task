@@ -22,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PostContract::class, PostRepository::class);
         $this->app->bind(BookingContract::class, BookingRepository::class);
         $this->app->bind(ServiceContract::class, ServiceRepository::class);
+        $this->app->bind(BookingService::class);
+        $this->app->bind(ServiceService::class);
     }
 
     /**

@@ -63,7 +63,7 @@ php artisan migrate:fresh --seed
 php artisan serve
 ```
 
-The application will be available at `http://localhost:8000`
+The application will be available at `127.0.0.1`
 
 ## Database Seeders
 

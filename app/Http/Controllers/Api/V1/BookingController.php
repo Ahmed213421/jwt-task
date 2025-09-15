@@ -19,27 +19,15 @@ class BookingController extends BaseApiController
     public function index(Request $request)
     {
         $user = $request->user();
-        $result = $this->bookingService->getUserBookings($user->id);
-
-        if ($result->getStatusCode() === 200) {
-            $data = $result->getData(true);
-            return $this->respondWithSuccess('Bookings retrieved successfully', $data);
-        }
-
-        return $result;
+        $bookings = $this->bookingService->getUserBookings($user->id);
+        return $this->respondWithSuccess('Bookings retrieved successfully', $bookings);
     }
 
     public function specialistBookings(Request $request)
     {
         $specialist = $request->user();
-        $result = $this->bookingService->getSpecialistBookings($specialist->id);
-
-        if ($result->getStatusCode() === 200) {
-            $data = $result->getData(true);
-            return $this->respondWithSuccess('Specialist bookings retrieved successfully', $data);
-        }
-
-        return $result;
+        $bookings = $this->bookingService->getSpecialistBookings($specialist->id);
+        return $this->respondWithSuccess('Specialist bookings retrieved successfully', $bookings);
     }
 
     public function store(StoreBookingRequest $request)
@@ -47,12 +35,17 @@ class BookingController extends BaseApiController
         $user = $request->user();
         $result = $this->bookingService->createBooking($request->validated(), $user->id);
 
-        if ($result->getStatusCode() === 201) {
-            $data = $result->getData(true);
-            return $this->setStatusCode(201)->respondWithSuccess('Booking created successfully', $data);
+        if (isset($result['error'])) {
+            if (isset($result['errors'])) {
+                return $this->respondWithError($result['error'], 422, $result['errors']);
+            }
+            if (isset($result['conflicting_bookings'])) {
+                return $this->respondWithError($result['error'], 422, ['conflicting_bookings' => $result['conflicting_bookings']]);
+            }
+            return $this->respondWithError($result['error'], 422);
         }
 
-        return $result;
+        return $this->setStatusCode(201)->respondWithSuccess('Booking created successfully', $result);
     }
 
     public function show(Request $request, int $bookingId)
@@ -60,12 +53,12 @@ class BookingController extends BaseApiController
         $user = $request->user();
         $result = $this->bookingService->getBooking($bookingId, $user->id);
 
-        if ($result->getStatusCode() === 200) {
-            $data = $result->getData(true);
-            return $this->respondWithSuccess('Booking retrieved successfully', $data);
+        if (isset($result['error'])) {
+            $statusCode = $result['error'] === 'Booking not found' ? 404 : 403;
+            return $this->respondWithError($result['error'], $statusCode);
         }
 
-        return $result;
+        return $this->respondWithSuccess('Booking retrieved successfully', $result);
     }
 
     public function update(UpdateBookingRequest $request, int $bookingId)
@@ -73,12 +66,18 @@ class BookingController extends BaseApiController
         $user = $request->user();
         $result = $this->bookingService->updateBooking($bookingId, $request->validated(), $user->id);
 
-        if ($result->getStatusCode() === 200) {
-            $data = $result->getData(true);
-            return $this->respondWithSuccess('Booking updated successfully', $data);
+        if (isset($result['error'])) {
+            if (isset($result['errors'])) {
+                return $this->respondWithError($result['error'], 422, $result['errors']);
+            }
+            if (isset($result['conflicting_bookings'])) {
+                return $this->respondWithError($result['error'], 422, ['conflicting_bookings' => $result['conflicting_bookings']]);
+            }
+            $statusCode = in_array($result['error'], ['Booking not found', 'Unauthorized access to booking']) ? 404 : 422;
+            return $this->respondWithError($result['error'], $statusCode);
         }
 
-        return $result;
+        return $this->respondWithSuccess('Booking updated successfully', $result);
     }
 
     public function cancel(Request $request, int $bookingId)
@@ -86,12 +85,12 @@ class BookingController extends BaseApiController
         $user = $request->user();
         $result = $this->bookingService->cancelBooking($bookingId, $user->id);
 
-        if ($result->getStatusCode() === 200) {
-            $data = $result->getData(true);
-            return $this->respondWithSuccess('Booking cancelled successfully', $data);
+        if (isset($result['error'])) {
+            $statusCode = $result['error'] === 'Booking not found' ? 404 : 422;
+            return $this->respondWithError($result['error'], $statusCode);
         }
 
-        return $result;
+        return $this->respondWithSuccess('Booking cancelled successfully', $result);
     }
 
     public function availableSlots(Request $request, int $specialistId)
@@ -107,12 +106,24 @@ class BookingController extends BaseApiController
             $request->service_id
         );
 
-        if ($result->getStatusCode() === 200) {
-            $data = $result->getData(true);
-            return $this->respondWithSuccess('Available slots retrieved successfully', $data);
+        if (isset($result['error'])) {
+            return $this->respondWithError($result['error'], 404);
         }
 
-        return $result;
+        return $this->respondWithSuccess('Available slots retrieved successfully', $result);
     }
 
+    public function specialistStats(Request $request)
+    {
+        $specialist = $request->user();
+        $stats = $this->bookingService->getSpecialistStats($specialist->id);
+        return $this->respondWithSuccess('Statistics retrieved successfully', $stats);
+    }
+
+    public function userStats(Request $request)
+    {
+        $user = $request->user();
+        $stats = $this->bookingService->getUserStats($user->id);
+        return $this->respondWithSuccess('Statistics retrieved successfully', $stats);
+    }
 }
