@@ -47,7 +47,7 @@ class BookingRepository implements BookingContract
         return $this->model->with($relations)->findOrFail($id);
     }
 
-    public function getUserBookings(int $userId, int $perPage = 15)
+    public function getUserBookings(int $userId, int $perPage = 15): array
     {
         return $this->model
             ->with(['specialist', 'service'])
@@ -57,7 +57,7 @@ class BookingRepository implements BookingContract
             ->toArray();
     }
 
-    public function getSpecialistBookings(int $specialistId, int $perPage = 15)
+    public function getSpecialistBookings(int $specialistId, int $perPage = 15): array
     {
         return $this->model
             ->with(['user', 'service'])

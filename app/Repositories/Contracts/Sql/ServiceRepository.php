@@ -45,7 +45,7 @@ class ServiceRepository implements ServiceContract
         return $this->model->with($relations)->findOrFail($id);
     }
 
-    public function getSpecialistServices(int $specialistId, int $perPage = 15)
+    public function getSpecialistServices(int $specialistId, int $perPage = 15): array
     {
         return $this->model
             ->with(['specialist'])
@@ -55,7 +55,7 @@ class ServiceRepository implements ServiceContract
             ->toArray();
     }
 
-    public function getActiveServices(int $perPage = 15)
+    public function getActiveServices(int $perPage = 15): array
     {
         return $this->model
             ->with(['specialist'])
@@ -67,7 +67,7 @@ class ServiceRepository implements ServiceContract
             ->toArray();
     }
 
-    public function getServicesByType(string $type, int $perPage = 15)
+    public function getServicesByType(string $type, int $perPage = 15): array
     {
         return $this->model
             ->with(['specialist'])
@@ -80,7 +80,7 @@ class ServiceRepository implements ServiceContract
             ->toArray();
     }
 
-    public function searchServices(string $query, int $perPage = 15)
+    public function searchServices(string $query, int $perPage = 15): array
     {
         return $this->model
             ->with(['specialist'])
