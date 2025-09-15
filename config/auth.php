@@ -44,14 +44,25 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+        'specialist' => [
+            'driver' => 'session',
+            'provider' => 'specialists',
+        ],
+
+
         'api' => [
-        'driver' => 'jwt',
-        'provider' => 'users',
+            'driver' => 'sanctum',
+            'provider' => 'users',
         ],
 
         'admin-api' => [
-            'driver' => 'jwt',
+            'driver' => 'sanctum',
             'provider' => 'admins',
+        ],
+
+        'specialist-api' => [
+            'driver' => 'sanctum',
+            'provider' => 'specialists',
         ],
     ],
 
@@ -81,6 +92,10 @@ return [
         'admins' => [
         'driver' => 'eloquent',
         'model' => App\Models\Admin::class,
+    ],
+        'specialists' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\Specialist::class,
     ],
 
 
@@ -118,6 +133,12 @@ return [
         ],
         'admins' => [
             'provider' => 'admins',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'specialists' => [
+            'provider' => 'specialists',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,

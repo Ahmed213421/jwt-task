@@ -2,114 +2,144 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Admin;
-use App\Models\User;
 use App\Http\Controllers\Controller;
-use Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Register a new user
+    // Register a new admin
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:admins',
             'password' => 'required|string|min:8',
             'mobile' => 'required|string|min:5',
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        $user = Admin::create([
+        $admin = Admin::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'mobile' => $request->mobile ?? null,
+            'mobile' => $request->mobile,
         ]);
 
-        $accessToken = JWTAuth::fromUser($user);
-
-        $refreshToken = JWTAuth::claims(['type' => 'refresh'])
-        ->fromUser($user, JWTAuth::factory()->setTTL(60 * 24 * 7)->getTTL());
+        // Create access token
+        $accessToken = $admin->createToken('admin-access-token')->plainTextToken;
 
         return response()->json([
             'message' => 'Registered successfully',
-            'user' => $user,
+            'admin' => $admin,
             'access_token' => $accessToken,
-        ])->cookie(
-            'refresh_token', $refreshToken, 60 * 24 * 7, '/', null, true, true, false, 'Strict'
-        );
+            'token_type' => 'Bearer',
+        ], 201);
     }
-
 
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'password' => 'required|string|min:8',
             'mobile' => 'required|string|min:5',
+            'password' => 'required|string|min:8',
         ]);
-        $credentials = $request->only('mobile', 'password');
 
-        if (!$token = Auth::guard('admin-api')->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        $admin = Auth::guard('admin-api')->user();
+        // Find admin by mobile
+        $admin = Admin::where('mobile', $request->mobile)->first();
 
+        if (!$admin || !Hash::check($request->password, $admin->password)) {
+            return response()->json([
+                'message' => 'Invalid credentials'
+            ], 401);
+        }
 
-        $refreshToken = JWTAuth::claims(['type' => 'refresh'])
-        ->fromUser($admin, JWTAuth::factory()->setTTL(60 * 24 * 7)->getTTL());
+        // Revoke existing tokens (optional - for single session)
+        // $admin->tokens()->delete();
+
+        // Create new access token
+        $accessToken = $admin->createToken('admin-access-token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'access_token' => $accessToken,
+            'token_type' => 'Bearer',
             'admin' => $admin,
-        ])->cookie(
-            'refresh_token', $refreshToken, 60 * 24 * 7, '/', null, true, true, false, 'Strict'
-        );
+        ]);
     }
 
-    // Get authenticated user details
-    public function user()
+    // Get authenticated admin details
+    public function user(Request $request)
     {
-        return response()->json(auth('admin-api')->user());
+        return response()->json([
+            'admin' => $request->user()
+        ]);
     }
 
-    // Logout the user
-    public function logout()
+    // Logout the admin
+    public function logout(Request $request)
     {
-        auth('admin-api')->logout();
+        // Revoke the current access token
+        $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Successfully logged out']);
+        return response()->json([
+            'message' => 'Successfully logged out'
+        ]);
     }
 
-// REFRESH ACCESS TOKEN
-    public function refresh(Request $request)
+    // Logout from all devices
+    public function logoutAll(Request $request)
     {
-        try {
-            $refreshToken = $request->cookie('refresh_token');
+        // Revoke all tokens for the admin
+        $request->user()->tokens()->delete();
 
-            if (!$refreshToken) {
-                return response()->json(['error' => 'Missing refresh token'], 401);
-            }
+        return response()->json([
+            'message' => 'Successfully logged out from all devices'
+        ]);
+    }
 
-            $newAccessToken = JWTAuth::setToken($refreshToken)->refresh();
+    // Get all active tokens (optional)
+    public function tokens(Request $request)
+    {
+        $tokens = $request->user()->tokens()->get(['id', 'name', 'created_at', 'last_used_at']);
 
+        return response()->json([
+            'tokens' => $tokens
+        ]);
+    }
+
+    // Revoke specific token (optional)
+    public function revokeToken(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'token_id' => 'required|integer|exists:personal_access_tokens,id',
+        ]);
+
+        if ($validator->fails()) {
             return response()->json([
-                'access_token' => $newAccessToken,
-                'token_type' => 'bearer',
-                'expires_in' => Auth::guard('admin-api')->factory()->getTTL() * 60,
-            ]);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-            return response()->json(['error' => 'Invalid or expired refresh token'], 401);
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
+
+        $request->user()->tokens()->where('id', $request->token_id)->delete();
+
+        return response()->json([
+            'message' => 'Token revoked successfully'
+        ]);
     }
 }
