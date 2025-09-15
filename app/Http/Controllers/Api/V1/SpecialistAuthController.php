@@ -9,6 +9,7 @@ use App\Models\Specialist;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
 
 class SpecialistAuthController extends Controller
 {
@@ -40,6 +41,18 @@ class SpecialistAuthController extends Controller
 
     public function login(Request $request)
     {
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|string|min:8',
+            'email' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+    }
         $specialist = Specialist::where('email', $request->email)->first();
 
         if (!$specialist || !Hash::check($request->password, $specialist->password)) {
