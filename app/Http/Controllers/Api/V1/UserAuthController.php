@@ -51,6 +51,7 @@ class UserAuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'password' => 'required|string|min:8',
+            'email' => 'required',
         ]);
 
         if ($validator->fails()) {
