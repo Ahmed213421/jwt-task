@@ -81,35 +81,4 @@ class SpecialistAuthController extends Controller
         ]);
     }
 
-    public function logoutAll(Request $request)
-    {
-        $request->user()->tokens()->delete();
-
-        return response()->json([
-            'message' => 'Successfully logged out from all devices'
-        ]);
-    }
-
-    public function tokens(Request $request)
-    {
-        $tokens = $request->user()->tokens()->get(['id', 'name', 'created_at', 'last_used_at']);
-
-        return response()->json([
-            'tokens' => $tokens
-        ]);
-    }
-
-
-    public function revokeToken(Request $request)
-    {
-        $request->validate([
-            'token_id' => 'required|integer|exists:personal_access_tokens,id',
-        ]);
-
-        $request->user()->tokens()->where('id', $request->token_id)->delete();
-
-        return response()->json([
-            'message' => 'Token revoked successfully'
-        ]);
-    }
 }
