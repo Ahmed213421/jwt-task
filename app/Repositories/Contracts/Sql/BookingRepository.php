@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Repositories\Contracts\BookingContract;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class BookingRepository implements BookingContract
 {
@@ -94,6 +95,37 @@ class BookingRepository implements BookingContract
         return $query->count() === 0;
     }
 
+    public function getConflictingBookings(int $specialistId, string $startTime, string $endTime, ?int $excludeBookingId = null): Collection
+    {
+        $startTime = Carbon::parse($startTime);
+        $endTime = Carbon::parse($endTime);
+
+        $query = $this->model
+            ->with(['user', 'service'])
+            ->where('specialist_id', $specialistId)
+            ->where('status', 'confirmed')
+            ->where(function ($q) use ($startTime, $endTime) {
+                $q->where(function ($q2) use ($startTime, $endTime) {
+                    $q2->where('start_time', '<=', $startTime)
+                       ->where('end_time', '>', $startTime);
+                })->orWhere(function ($q3) use ($startTime, $endTime) {
+                    $q3->where('start_time', '<', $endTime)
+                       ->where('end_time', '>=', $endTime);
+                })->orWhere(function ($q4) use ($startTime, $endTime) {
+                    $q4->where('start_time', '>=', $startTime)
+                       ->where('end_time', '<=', $endTime);
+                })->orWhere(function ($q5) use ($startTime, $endTime) {
+                    $q5->where('start_time', '<=', $startTime)
+                       ->where('end_time', '>=', $endTime);
+                });
+            });
+
+        if ($excludeBookingId) {
+            $query->where('id', '!=', $excludeBookingId);
+        }
+
+        return $query->get();
+    }
 
     public function cancelBooking(int $id): bool
     {

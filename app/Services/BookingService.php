@@ -28,6 +28,26 @@ class BookingService
             ];
         }
 
+        if (!$this->checkSpecialistAvailability($data['specialist_id'], $data['start_time'], $data['end_time'])) {
+            $conflictingBookings = $this->bookingRepository->getConflictingBookings(
+                $data['specialist_id'],
+                $data['start_time'],
+                $data['end_time']
+            );
+
+            return [
+                'error' => 'The specialist is not available at the requested time',
+                'conflicting_bookings' => $conflictingBookings->map(function ($booking) {
+                    return [
+                        'id' => $booking->id,
+                        'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
+                        'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
+                        'service' => $booking->service->title,
+                        'user' => $booking->user->name
+                    ];
+                })
+            ];
+        }
 
         $booking = $this->bookingRepository->create([
             'user_id' => $userId,
@@ -40,7 +60,7 @@ class BookingService
 
         $booking->load(['specialist', 'service']);
 
-        return $booking->toArray();
+        return $booking;
     }
 
     public function updateBooking(int $bookingId, array $data, int $userId): array
@@ -71,7 +91,27 @@ class BookingService
             ];
         }
 
+        if (!$this->checkSpecialistAvailability($data['specialist_id'], $data['start_time'], $data['end_time'], $bookingId)) {
+            $conflictingBookings = $this->bookingRepository->getConflictingBookings(
+                $data['specialist_id'],
+                $data['start_time'],
+                $data['end_time'],
+                $bookingId
+            );
 
+            return [
+                'error' => 'The specialist is not available at the requested time',
+                'conflicting_bookings' => $conflictingBookings->map(function ($booking) {
+                    return [
+                        'id' => $booking->id,
+                        'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
+                        'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
+                        'service' => $booking->service->title,
+                        'user' => $booking->user->name
+                    ];
+                })
+            ];
+        }
 
         $this->bookingRepository->update($booking, $data);
         $booking->refresh();
