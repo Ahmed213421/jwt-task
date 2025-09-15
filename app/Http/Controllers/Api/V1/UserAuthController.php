@@ -13,8 +13,23 @@ use Illuminate\Validation\ValidationException;
 class UserAuthController extends Controller
 {
 
-    public function register(UserRegisterRequest $request)
+    public function register(Request $request)
     {
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:admins',
+            'password' => 'required|string|min:8',
+            'mobile' => 'required|string|min:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -31,8 +46,20 @@ class UserAuthController extends Controller
         ], 201);
     }
 
-    public function login(UserLoginRequest $request)
+    public function login(Request $request)
     {
+
+        $validator = Validator::make($request->all(), [
+            'mobile' => 'required|string|min:5',
+            'password' => 'required|string|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
