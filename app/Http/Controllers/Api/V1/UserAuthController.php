@@ -51,7 +51,6 @@ class UserAuthController extends Controller
     {
 
         $validator = Validator::make($request->all(), [
-            'mobile' => 'required|string|min:5',
             'password' => 'required|string|min:8',
         ]);
 
