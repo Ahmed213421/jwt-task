@@ -53,7 +53,8 @@ class BookingRepository implements BookingContract
             ->with(['specialist', 'service'])
             ->where('user_id', $userId)
             ->orderBy('start_time', 'desc')
-            ->paginate($perPage);
+            ->get()
+            ->toArray();
     }
 
     public function getSpecialistBookings(int $specialistId, int $perPage = 15)
@@ -62,7 +63,8 @@ class BookingRepository implements BookingContract
             ->with(['user', 'service'])
             ->where('specialist_id', $specialistId)
             ->orderBy('start_time', 'desc')
-            ->paginate($perPage);
+            ->get()
+            ->toArray();
     }
 
     public function isSpecialistAvailable(int $specialistId, string $startTime, string $endTime, ?int $excludeBookingId = null): bool

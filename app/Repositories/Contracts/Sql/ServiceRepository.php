@@ -45,13 +45,14 @@ class ServiceRepository implements ServiceContract
         return $this->model->with($relations)->findOrFail($id);
     }
 
-    public function getServicesBySpecialist(int $specialistId, int $perPage = 15)
+    public function getSpecialistServices(int $specialistId, int $perPage = 15)
     {
         return $this->model
             ->with(['specialist'])
             ->where('specialist_id', $specialistId)
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
+            ->get()
+            ->toArray();
     }
 
     public function getActiveServices(int $perPage = 15)
@@ -62,7 +63,8 @@ class ServiceRepository implements ServiceContract
                 $query->where('is_active', true);
             })
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
+            ->get()
+            ->toArray();
     }
 
     public function getServicesByType(string $type, int $perPage = 15)
@@ -74,7 +76,8 @@ class ServiceRepository implements ServiceContract
                       ->where('is_active', true);
             })
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
+            ->get()
+            ->toArray();
     }
 
     public function searchServices(string $query, int $perPage = 15)
@@ -86,7 +89,8 @@ class ServiceRepository implements ServiceContract
                 $q->where('is_active', true);
             })
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
+            ->get()
+            ->toArray();
     }
 
     public function getServiceStats(int $specialistId): array

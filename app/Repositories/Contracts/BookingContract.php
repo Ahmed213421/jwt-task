@@ -4,8 +4,8 @@ namespace App\Repositories\Contracts;
 
 interface BookingContract extends BaseContract
 {
-    public function getUserBookings(int $userId, int $perPage = 15);
-    public function getSpecialistBookings(int $specialistId, int $perPage = 15);
+    public function getUserBookings(int $userId, int $perPage = 15): array;
+    public function getSpecialistBookings(int $specialistId, int $perPage = 15): array;
     public function isSpecialistAvailable(int $specialistId, string $startTime, string $endTime, ?int $excludeBookingId = null): bool;
     public function getConflictingBookings(int $specialistId, string $startTime, string $endTime, ?int $excludeBookingId = null): \Illuminate\Support\Collection;
     public function getAvailableTimeSlots(int $specialistId, string $date): array;
