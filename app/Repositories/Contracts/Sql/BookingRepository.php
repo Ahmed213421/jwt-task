@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 
 class BookingRepository implements BookingContract
 {
+    protected $model;
     public function __construct(Booking $model)
     {
         $this->model = $model;
@@ -95,7 +96,7 @@ class BookingRepository implements BookingContract
         return $query->count() === 0;
     }
 
-    public function getConflictingBookings(int $specialistId, string $startTime, string $endTime, ?int $excludeBookingId = null): Collection
+    public function getConflictingBookings(int $specialistId, string $startTime, string $endTime, ?int $excludeBookingId = null): \Illuminate\Support\Collection
     {
         $startTime = Carbon::parse($startTime);
         $endTime = Carbon::parse($endTime);
@@ -125,6 +126,44 @@ class BookingRepository implements BookingContract
         }
 
         return $query->get();
+    }
+
+    public function getAvailableTimeSlots(int $specialistId, string $date): array
+    {
+        $date = Carbon::parse($date);
+        $startOfDay = $date->copy()->startOfDay();
+        $endOfDay = $date->copy()->endOfDay();
+
+        $existingBookings = $this->model
+            ->where('specialist_id', $specialistId)
+            ->where('status', 'confirmed')
+            ->whereBetween('start_time', [$startOfDay, $endOfDay])
+            ->orderBy('start_time')
+            ->get();
+
+        $availableSlots = [];
+        $currentTime = $startOfDay->copy()->addHours(9);
+        $endTime = $endOfDay->copy()->subHours(1);
+
+        while ($currentTime->lte($endTime)) {
+            $slotEnd = $currentTime->copy()->addMinutes(30);
+
+            $hasConflict = $existingBookings->contains(function ($booking) use ($currentTime, $slotEnd) {
+                return $currentTime->lt($booking->end_time) && $slotEnd->gt($booking->start_time);
+            });
+
+            if (!$hasConflict) {
+                $availableSlots[] = [
+                    'start_time' => $currentTime->format('Y-m-d H:i:s'),
+                    'end_time' => $slotEnd->format('Y-m-d H:i:s'),
+                    'formatted_time' => $currentTime->format('H:i') . ' - ' . $slotEnd->format('H:i')
+                ];
+            }
+
+            $currentTime->addMinutes(30);
+        }
+
+        return $availableSlots;
     }
 
     public function cancelBooking(int $id): bool

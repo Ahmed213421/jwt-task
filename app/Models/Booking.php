@@ -36,9 +36,7 @@ class Booking extends Model
         return $this->belongsTo(Service::class);
     }
 
-    /**
-     * Check if a specialist is available at the given time
-     */
+   
     public static function isSpecialistAvailable($specialistId, $startTime, $endTime, $excludeBookingId = null)
     {
         $query = self::where('specialist_id', $specialistId)

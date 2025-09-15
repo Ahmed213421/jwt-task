@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceRepository implements ServiceContract
 {
+    protected $model;
     public function __construct(Service $model)
     {
         $this->model = $model;
